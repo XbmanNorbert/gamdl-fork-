@@ -279,7 +279,7 @@ class AppleMusicApi:
         try:
             response = await self.client.get(
                 APPLE_MUSIC_AMP_API_URL + uri,
-                params=params,
+                params={"l": self.language, **(params or {})},
             )
             response.raise_for_status()
             response_json = response.json()

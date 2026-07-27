@@ -223,7 +223,7 @@ The file is created automatically on first run. Command-line arguments override 
 
 ### Metadata Language
 
-Use ISO 639-1 language codes (e.g., `en-US`, `es-ES`, `ja-JP`, `pt-BR`). Don't always work for music videos.
+Use ISO 639-1 language codes (e.g., `en-US`, `es-ES`, `ja-JP`, `pt-BR`). Chinese variants use script subtags: `zh-Hans` (Simplified) and `zh-Hant` (Traditional). Also applies to lyrics. Don't always work for music videos.
 
 ### Song Codecs
 
