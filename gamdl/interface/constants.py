@@ -29,6 +29,9 @@ DRM_DEFAULT_KEY_MAPPING = {
     ),
     "com.apple.streamingkeydelivery": "skd://itunes.apple.com/P000000000/s1/e1",
 }
+TTML_NAMESPACE = "http://www.w3.org/ns/ttml"
+TTML_ITUNES_NAMESPACE = "http://music.apple.com/lyric-ttml-internal"
+XML_NAMESPACE = "http://www.w3.org/XML/1998/namespace"
 MP4_FORMAT_CODECS = ["ec-3", "hvc1", "audio-atmos", "audio-ec3"]
 SONG_CODEC_REGEX_MAP = {
     "aac": r"audio-stereo-\d+",
