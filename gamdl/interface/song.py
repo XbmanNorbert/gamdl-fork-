@@ -1,7 +1,5 @@
 import asyncio
-import base64
 import datetime
-import json
 import re
 from typing import AsyncGenerator, Callable
 from xml.dom import minidom
@@ -364,7 +362,6 @@ class AppleMusicSongInterface:
 
         stream_info = await self._get_stream_info_from_playlist(
             m3u8_master_url,
-            m3u8_master_data,
             playlist,
         )
 
@@ -394,7 +391,6 @@ class AppleMusicSongInterface:
 
         stream_info = await self._get_stream_info_from_playlist(
             m3u8_master_url,
-            m3u8_master_data,
             playlist,
             True,
         )
@@ -406,7 +402,6 @@ class AppleMusicSongInterface:
     async def _get_stream_info_from_playlist(
         self,
         m3u8_master_url: str,
-        m3u8_master_data: dict,
         playlist: dict,
         use_single_content_key: bool = False,
     ) -> StreamInfoAv:
@@ -417,45 +412,22 @@ class AppleMusicSongInterface:
         stream_info.codec = playlist["stream_info"]["codecs"]
         is_mp4 = any(stream_info.codec.startswith(codec) for codec in MP4_FORMAT_CODECS)
 
-        session_key_metadata = self._get_audio_session_key_metadata(m3u8_master_data)
+        m3u8_obj = m3u8.loads(
+            (await self.base.get_response(stream_info.stream_url)).text
+        )
 
-        if session_key_metadata:
-            asset_metadata = self._get_asset_metadata(m3u8_master_data)
-            variant_id = playlist["stream_info"]["stable_variant_id"]
-            drm_ids = asset_metadata[variant_id]["AUDIO-SESSION-KEY-IDS"]
-
-            stream_info.widevine_pssh = self._get_drm_uri_from_session_key(
-                session_key_metadata,
-                drm_ids,
-                "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed",
-            )
-            stream_info.playready_pssh = self._get_drm_uri_from_session_key(
-                session_key_metadata,
-                drm_ids,
-                "com.microsoft.playready",
-            )
-            stream_info.fairplay_key = self._get_drm_uri_from_session_key(
-                session_key_metadata,
-                drm_ids,
-                "com.apple.streamingkeydelivery",
-            )
-        else:
-            m3u8_obj = m3u8.loads(
-                (await self.base.get_response(stream_info.stream_url)).text
-            )
-
-            stream_info.widevine_pssh = self._get_drm_uri_from_m3u8_keys(
-                m3u8_obj,
-                "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed",
-            )
-            stream_info.playready_pssh = self._get_drm_uri_from_m3u8_keys(
-                m3u8_obj,
-                "com.microsoft.playready",
-            )
-            stream_info.fairplay_key = self._get_drm_uri_from_m3u8_keys(
-                m3u8_obj,
-                "com.apple.streamingkeydelivery",
-            )
+        stream_info.widevine_pssh = self._get_drm_uri_from_m3u8_keys(
+            m3u8_obj,
+            "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed",
+        )
+        stream_info.playready_pssh = self._get_drm_uri_from_m3u8_keys(
+            m3u8_obj,
+            "com.microsoft.playready",
+        )
+        stream_info.fairplay_key = self._get_drm_uri_from_m3u8_keys(
+            m3u8_obj,
+            "com.apple.streamingkeydelivery",
+        )
 
         stream_info_av = StreamInfoAv(
             audio_track=stream_info,
@@ -463,26 +435,6 @@ class AppleMusicSongInterface:
         )
 
         return stream_info_av
-
-    def _get_m3u8_metadata(self, m3u8_data: dict, data_id: str) -> dict | None:
-        for session_data in m3u8_data.get("session_data", []):
-            if session_data["data_id"] == data_id:
-                return json.loads(
-                    base64.b64decode(session_data["value"]).decode("utf-8")
-                )
-        return None
-
-    def _get_audio_session_key_metadata(self, m3u8_data: dict) -> dict | None:
-        return self._get_m3u8_metadata(
-            m3u8_data,
-            "com.apple.hls.AudioSessionKeyInfo",
-        )
-
-    def _get_asset_metadata(self, m3u8_data: dict) -> dict | None:
-        return self._get_m3u8_metadata(
-            m3u8_data,
-            "com.apple.hls.audioAssetMetadata",
-        )
 
     def _get_playlist_from_codec_enhanced(
         self, m3u8_data: dict, codec: SongCodec
@@ -537,17 +489,6 @@ class AppleMusicSongInterface:
 
             return playlist
 
-        return None
-
-    def _get_drm_uri_from_session_key(
-        self,
-        drm_infos: dict,
-        drm_ids: list,
-        drm_key: str,
-    ) -> str | None:
-        for drm_id in drm_ids:
-            if drm_id != "1" and drm_key in drm_infos.get(drm_id, {}):
-                return drm_infos[drm_id][drm_key]["URI"]
         return None
 
     def _get_drm_uri_from_m3u8_keys(
