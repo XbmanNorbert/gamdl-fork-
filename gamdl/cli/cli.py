@@ -147,6 +147,7 @@ async def main(config: CliConfig):
         synced_lyrics_format=config.synced_lyrics_format,
         codec_priority=config.song_codec_piority,
         use_album_date=config.use_album_date,
+        use_lyrics_translation=config.use_lyrics_translation,
         skip_stream_info=config.synced_lyrics_only,
         ask_codec_function=interactive_prompts.ask_song_codec,
     )

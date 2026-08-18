@@ -9,7 +9,14 @@ import m3u8
 import structlog
 
 from .base import AppleMusicBaseInterface
-from .constants import DRM_DEFAULT_KEY_MAPPING, MP4_FORMAT_CODECS, SONG_CODEC_REGEX_MAP
+from .constants import (
+    DRM_DEFAULT_KEY_MAPPING,
+    MP4_FORMAT_CODECS,
+    SONG_CODEC_REGEX_MAP,
+    TTML_ITUNES_NAMESPACE,
+    TTML_NAMESPACE,
+    XML_NAMESPACE,
+)
 from .enums import SongCodec, SyncedLyricsFormat
 from .exceptions import (
     GamdlInterfaceDecryptionNotAvailableError,
@@ -35,6 +42,7 @@ class AppleMusicSongInterface:
         synced_lyrics_format: SyncedLyricsFormat = SyncedLyricsFormat.LRC,
         codec_priority: list[SongCodec] = [SongCodec.AAC_WEB],
         use_album_date: bool = False,
+        use_lyrics_translation: bool = False,
         skip_stream_info: bool = False,
         ask_codec_function: Callable[[list[dict]], dict | None] | None = None,
     ):
@@ -42,6 +50,7 @@ class AppleMusicSongInterface:
         self.synced_lyrics_format = synced_lyrics_format
         self.codec_priority = codec_priority
         self.use_album_date = use_album_date
+        self.use_lyrics_translation = use_lyrics_translation
         self.skip_stream_info = skip_stream_info
         self.ask_codec_function = ask_codec_function
 
@@ -99,15 +108,22 @@ class AppleMusicSongInterface:
         lyrics_ttml: str,
     ) -> Lyrics:
         lyrics_ttml_et = ElementTree.fromstring(lyrics_ttml)
+        translation = self._get_lyrics_translation(lyrics_ttml_et)
         unsynced_lyrics = []
         synced_lyrics = []
         index = 1
 
-        for div in lyrics_ttml_et.iter("{http://www.w3.org/ns/ttml}div"):
+        for div in lyrics_ttml_et.iter(f"{{{TTML_NAMESPACE}}}div"):
             stanza = []
             unsynced_lyrics.append(stanza)
 
-            for p in div.iter("{http://www.w3.org/ns/ttml}p"):
+            for p in div.iter(f"{{{TTML_NAMESPACE}}}p"):
+                translated_text = translation.get(
+                    p.attrib.get(f"{{{TTML_ITUNES_NAMESPACE}}}key")
+                )
+                if translated_text:
+                    p.text = translated_text
+
                 if p.text is not None:
                     stanza.append(p.text)
 
@@ -135,6 +151,44 @@ class AppleMusicSongInterface:
                 else None
             ),
         )
+
+    def _get_lyrics_translation(
+        self,
+        lyrics_ttml_et: ElementTree.Element,
+    ) -> dict[str, str]:
+        if not self.use_lyrics_translation:
+            return {}
+
+        language = self.base.apple_music_api.language
+
+        for translation in lyrics_ttml_et.iter(
+            f"{{{TTML_ITUNES_NAMESPACE}}}translation"
+        ):
+            translation_language = translation.attrib.get(f"{{{XML_NAMESPACE}}}lang")
+            if not self._is_matching_language(translation_language, language):
+                continue
+
+            return {
+                text.attrib["for"]: text.text
+                for text in translation.iter(f"{{{TTML_ITUNES_NAMESPACE}}}text")
+                if text.attrib.get("for") and text.text
+            }
+
+        return {}
+
+    @staticmethod
+    def _is_matching_language(
+        translation_language: str | None,
+        language: str,
+    ) -> bool:
+        if not translation_language:
+            return False
+
+        translation_subtags = translation_language.casefold().split("-")
+        language_subtags = language.casefold().split("-")
+        common_length = min(len(translation_subtags), len(language_subtags))
+
+        return translation_subtags[:common_length] == language_subtags[:common_length]
 
     def _parse_ttml_timestamp(
         self,

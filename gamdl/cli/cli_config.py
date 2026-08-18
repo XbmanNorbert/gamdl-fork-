@@ -262,6 +262,14 @@ class CliConfig:
             is_flag=True,
         ),
     ]
+    use_lyrics_translation: Annotated[
+        bool,
+        option(
+            "--use-lyrics-translation",
+            help="Use the lyrics translation for the chosen language, when available",
+            is_flag=True,
+        ),
+    ]
     # Music Video Interface Options
     music_video_resolution: Annotated[
         MusicVideoResolution,

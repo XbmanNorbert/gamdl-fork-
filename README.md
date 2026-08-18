@@ -152,6 +152,7 @@ The file is created automatically on first run. Command-line arguments override 
 | `--synced-lyrics-format`        | Synced lyrics format                                              | `lrc`                         |
 | `--song-codec-priority`         | Comma-separated codec priority                                    | `aac-web`                     |
 | `--use-album-date`              | Use album release date for songs                                  | `false`                       |
+| `--use-lyrics-translation`      | Use the lyrics translation for the chosen language, when available | `false`                      |
 | `--no-synced-lyrics`            | Don't download synced lyrics                                      | `false`                       |
 | `--synced-lyrics-only`          | Download only synced lyrics                                       | `false`                       |
 | **Music Video Options**         |                                                                   |                               |
@@ -223,7 +224,9 @@ The file is created automatically on first run. Command-line arguments override 
 
 ### Metadata Language
 
-Use ISO 639-1 language codes (e.g., `en-US`, `es-ES`, `ja-JP`, `pt-BR`). Don't always work for music videos.
+Use ISO 639-1 language codes (e.g., `en-US`, `es-ES`, `ja-JP`, `pt-BR`). Chinese variants use script subtags: `zh-Hans` (Simplified) and `zh-Hant` (Traditional). Don't always work for music videos.
+
+Lyrics are always returned in the language they were written in. When Apple Music has a translation available for the chosen language, `--use-lyrics-translation` writes that translation instead of the original text (e.g. `-l zh-Hans --use-lyrics-translation` for Simplified Chinese lyrics).
 
 ### Song Codecs
 
